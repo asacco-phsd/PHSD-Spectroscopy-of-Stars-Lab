@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Spectroscopy: A Virtual Lab</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font:18px/1.55 -apple-system,system-ui,sans-serif;color:#1b2430;background:#eef2f8;-webkit-text-size-adjust:100%}
+header{background:#14213d;color:#fff;padding:12px 16px;-webkit-user-select:none;user-select:none}h1{font-size:22px;margin:0}header div{opacity:.8;font-size:15px}
+nav{display:flex;gap:6px;overflow-x:auto;padding:8px;background:#fff;position:sticky;top:0;z-index:5;box-shadow:0 1px 4px #0003}
+nav button{flex:0 0 auto;padding:6px 11px;font-size:16px}
+button{font:inherit;min-height:48px;padding:6px 16px;border-radius:12px;border:2px solid #cbd5e1;background:#fff;color:#1b2430;touch-action:manipulation;cursor:pointer}
+button.on{background:#2563eb;color:#fff;border-color:#2563eb}
+button.lk{background:#e2e8f0;color:#64748b;border-style:dashed}
+.go{background:#16a34a;color:#fff;border-color:#16a34a}
+.card{background:#fff;border-radius:14px;padding:12px 16px;margin:12px;box-shadow:0 1px 4px #0002;max-width:900px}
+@media(min-width:940px){.card{margin:12px auto}}
+.task{border:3px solid #2563eb}
+.qcard{border:3px solid #f59e0b;background:#fff7e0}
+.qb{background:#fff;border:3px solid #f59e0b;border-radius:14px;padding:10px 14px;margin:12px 0;scroll-margin-top:90px}
+.qb.ok{border-color:#16a34a;background:#f0fdf4}
+.qb.opt{border-color:#60a5fa;border-style:dashed}
+.qh{display:flex;gap:10px;align-items:flex-start;font-weight:700;font-size:19px;margin-bottom:6px}.qn{font-size:24px;line-height:1.2}
+.flash{animation:fl 1.6s}@keyframes fl{0%,70%{box-shadow:0 0 0 8px #f59e0bcc}100%{box-shadow:0 0 0 0 #f59e0b00}}
+.bar{height:12px;background:#e2e8f0;border-radius:6px;overflow:hidden;margin:6px 0}.bar i{display:block;height:100%;background:#16a34a;transition:width .3s}
+h2{font-size:21px;margin:4px 0 8px}h3{font-size:18px;margin:14px 0 4px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0}
+canvas{width:100%;display:block;border-radius:10px;touch-action:pan-y;background:#fff;margin:8px 0}
+textarea,input{font:inherit;font-size:17px;width:100%;padding:10px;border:2px solid #cbd5e1;border-radius:10px;margin:4px 0}
+.term{border-bottom:2px dotted #2563eb;color:#1d4ed8;cursor:pointer;background:#eff6ff;border-radius:3px;padding:0 2px}.term.open{background:#fde68a}
+.fb{font-weight:600;margin:6px 0}
+.tube{height:54px;max-width:460px;margin:12px auto;border-radius:27px;background:#d9dee7;border:3px solid #94a3b8}
+.tube.lit{background:rgb(var(--g));border-color:#fff;box-shadow:0 0 30px 10px rgba(var(--g),.65)}
+.pv{font-size:19px;min-height:24px;color:#1d4ed8}
+.nx button{width:100%;font-size:20px;min-height:56px}
+#pop{position:absolute;z-index:30;display:none;width:max-content;max-width:290px;background:#14213d;color:#fff;padding:12px 14px;border-radius:12px;font-size:17px;line-height:1.4;box-shadow:0 6px 20px #0007}
+#pop::after{content:"";position:absolute;left:var(--ax,20px);width:14px;height:14px;background:#14213d;transform:rotate(45deg)}
+#pop.below::after{top:-7px}#pop.above::after{bottom:-7px}
+#pop b{display:block;color:#fbbf24;margin-bottom:2px}
+.ev{background:#eff6ff;border:2px solid #93c5fd;border-radius:10px;padding:8px 12px;margin:8px 0;font-size:16px}
+.evr{margin:6px 0;font-size:17px}
+input.wl{width:96px;display:inline-block;margin:2px 4px;padding:6px 8px;text-align:center}
+button[data-cool].lk{border-style:solid}
+.sm{font-size:15px;color:#475569}
+</style></head><body>
+<header><h1>🔬 Spectroscopy: A Virtual Lab</h1><div id="sub"></div></header>
+<nav id="nav"></nav><main id="v"><div id="bn"></div><div id="bd"></div><div id="nx"></div></main><div id="pop"></div>
+<script>
+const TEACHER_CODE='chem'; // Teacher unlock: tap the blue title bar 5 times, then type this code. CHANGE IT before sharing.
+const $=s=>document.querySelector(s);
+let S={tab:0,tube:'Na',cmp:'',pwr:false,u:{},fb:{},ok:{},tries:{},cool:{},att:{},ev:{},txt:{q3:'',q11:''},e:{},ef:{},name:'',
+ m:{star:{sel:'0',ov:[],ans:{0:[],1:[],2:[]}},q12:{sel:'A',ov:[],ans:{A:[],B:[],C:[]}}}};
+let UNLOCK=false,TOP=false;
+try{const s=JSON.parse(localStorage.getItem('speclab2')||'null');if(s)S=Object.assign(S,s)}catch(e){}
+S.ok=S.ok||{};S.tries=S.tries||{};S.cool=S.cool||{};S.att=S.att||{};S.ev=S.ev||{};['star','q12'].forEach(k=>S.m[k].ov=(S.m[k].ov||[]).slice(-1));
+const save=()=>{try{localStorage.setItem('speclab2',JSON.stringify(S))}catch(e){}};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function rgb(l){let r=0,g=0,b=0;if(l<440){r=(440-l)/60;b=1}else if(l<490){g=(l-440)/50;b=1}else if(l<510){g=1;b=(510-l)/20}else if(l<580){r=(l-510)/70;g=1}else if(l<645){r=1;g=(645-l)/65}else r=1;const f=l>700?.3+.7*(750-l)/50:1;return[r,g,b].map(v=>Math.round(255*Math.pow(v*f,.8)))}
+const col=l=>'rgb('+rgb(l)+')';
+// ---------- data (wavelengths in nm) ----------
+const EM={Na:{n:'Sodium',L:[[586,1],[589,.9]]},
+Ne:{n:'Neon',L:[[509,.8],[520,.6],[524,.6],[528,.4],[560,.5],[565,.8],[570,.5],[587,.6],[602,.9],[607,.9],[667,.7],[681,.5],[685,.5],[696,.7],[700,.5],[703,.7],[708,.5],[717,.5],[735,.5]]},
+Hg:{n:'Mercury',L:[[409,.4],[441,.6],[545,.5],[565,.9],[576,.7],[579,.7],[587,.6],[667,.6],[686,.5],[703,.6]]},
+He:{n:'Helium',L:[[450,.6],[503,.7],[583,1],[663,.8],[701,.6]]}};
+const POOL=['Na','Ne','Hg','He'];
+if(!S.unk||!POOL.includes(S.unk.U1)||!POOL.includes(S.unk.U2)||S.unk.U1===S.unk.U2){const a=POOL.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}S.unk={U1:a[0],U2:a[1]}}
+const UNK=S.unk;
+const Q={Ca:[436,501,505,508,538,662,693,704,718,727],He:[444,482,564,646,680,706],H:[481,491,540,664,717,740],Li:[655,690],Na:[560,563],Kr:[593,678,685,725],Ar:[585,680,720,725,730,735,746],O:[534,551,714,733,741],N:[488,497,505,509,571,734,740],Ba:[413,441,492,536,595,695]};
+const QN={Ca:'Calcium',He:'Helium',H:'Hydrogen',Li:'Lithium',Na:'Sodium',Kr:'Krypton',Ar:'Argon',O:'Oxygen',N:'Nitrogen',Ba:'Barium'};
+const QT={A:['He','H'],B:['Li','Na','Ba'],C:['Ca','He','H','Na','Kr','O']};
+const SR={H:[486,657],Mg:[519],Ca:[411,423,480,503,534,560,617,646],Fe:[405,414,433,439,517,527,533]};
+const SN={H:'Hydrogen',Mg:'Magnesium',Ca:'Calcium',Fe:'Iron'};
+const STAR=[['Practice Star 1',['H','Mg']],['Practice Star 2',['H','Mg','Ca']],['Mystery Star',['H','Mg','Ca','Fe']]];
+const mk=(d,ids)=>[].concat(...ids.map(i=>d[i])).map(l=>[l,1]);
+const MV={
+ star:{items:STAR.map((s,i)=>[String(i),s[0]]),refs:SR,names:SN,lines:e=>SR[e],
+  row:i=>({label:STAR[i][0],abs:1,L:mk(SR,STAR[i][1])}),rr:e=>({label:SN[e],abs:1,L:SR[e].map(l=>[l,1])}),truth:i=>STAR[i][1],
+  tip:'Add ONE reference spectrum at a time. Do all of its dark lines match dark lines in the star?',
+  h:'Start with a practice star, then do the Mystery Star. Tap an element to place its reference spectrum under the star. Do the dark lines line up? Tap the picture to read a wavelength.'},
+ q12:{items:['A','B','C'].map(x=>[x,'Spectra '+x]),refs:Q,names:QN,lines:e=>Q[e],
+  row:x=>({label:'Spectra '+x,L:mk(Q,QT[x])}),rr:e=>({label:QN[e],L:Q[e].map(l=>[l,1])}),truth:x=>QT[x],
+  tip:'Add ONE reference spectrum at a time. Are ALL of its bright lines in this spectrum? Each spectrum has more than one element.',
+  h:'Spectra A, B and C each mix more than one element. Add one reference spectrum at a time and look for bright lines that match. Tap the picture to read a wavelength.'}};
+// ---------- spectrum drawing ----------
+let rows=[],cur=null;
+function draw(cv){const d=devicePixelRatio||1,W=cv.clientWidth,RH=46,G=6,H=rows.length*(RH+G)+30;
+ cv.style.height=H+'px';cv.width=W*d;cv.height=H*d;const c=cv.getContext('2d');c.scale(d,d);c.fillStyle='#fff';c.fillRect(0,0,W,H);
+ const X=l=>(l-400)/350*W;
+ rows.forEach((r,i)=>{const y=i*(RH+G);
+  if(r.abs){const g=c.createLinearGradient(0,0,W,0);for(let l=400;l<=750;l+=10)g.addColorStop((l-400)/350,col(l));c.fillStyle=g}else c.fillStyle='#000';
+  c.fillRect(0,y,W,RH);
+  r.L.forEach(([l,v])=>{if(r.abs){c.fillStyle='rgba(0,0,0,.88)';c.fillRect(X(l)-1.3,y,2.6,RH)}else{c.shadowColor=col(l);c.shadowBlur=9;c.fillStyle=col(l);c.fillRect(X(l)-1.2*(v+.6),y,2.4*(v+.6),RH)}});
+  c.shadowBlur=0;c.font='bold 13px system-ui';c.lineWidth=3;c.strokeStyle='rgba(0,0,0,.75)';c.strokeText(r.label,6,y+16);c.fillStyle='#fff';c.fillText(r.label,6,y+16)});
+ const y0=rows.length*(RH+G);c.fillStyle='#334';c.font='12px system-ui';c.textAlign='center';
+ for(let l=400;l<=750;l+=10){const x=X(l),M=l%50==0;c.fillRect(x-.5,y0,1,M?9:4);if(M)c.fillText(l==400?'400 nm':l,Math.min(Math.max(x,22),W-14),y0+22)}
+ if(cur!=null){const x=X(cur);c.fillStyle='rgba(255,255,255,.9)';c.fillRect(x-1.5,0,3,y0);c.fillStyle='#14213d';c.fillRect(x-.5,0,1,y0);
+  const t=Math.round(cur)+' nm',w=62,bx=Math.min(Math.max(x-w/2,0),W-w);c.fillRect(bx,y0+10,w,20);c.fillStyle='#fff';c.fillText(t,bx+w/2,y0+25)}}
+const redraw=()=>{const cv=$('#cv');if(cv)draw(cv)};
+function ptr(e){const cv=e.target;if(cv.id!='cv')return;const r=cv.getBoundingClientRect();cur=400+350*(e.clientX-r.left)/r.width;let b=null;
+ rows.forEach(w=>w.L.forEach(([l])=>{if(Math.abs(l-cur)<4&&(b==null||Math.abs(l-cur)<Math.abs(b-cur)))b=l}));if(b!=null)cur=b;redraw()}
+document.addEventListener('pointerdown',ptr);document.addEventListener('pointermove',e=>{if(e.buttons)ptr(e)});addEventListener('resize',redraw);
+// ---------- popup that appears right at the tapped word/button ----------
+const hide=()=>{$('#pop').style.display='none';document.querySelectorAll('.term.open').forEach(x=>x.classList.remove('open'))};
+function pop(el,html){const p=$('#pop');p.innerHTML=html;p.className='';p.style.display='block';p.style.left='0px';p.style.top='0px';
+ const rs=el.getClientRects(),rf=rs[0],rl=rs[rs.length-1],W=document.documentElement.clientWidth,pw=p.offsetWidth,ph=p.offsetHeight,sx=scrollX,sy=scrollY;
+ const cx=rf.left+rf.width/2;let left=Math.max(8,Math.min(cx-pw/2,W-pw-8));
+ const below=rl.bottom+ph+18<innerHeight||rf.top<ph+18;p.className=below?'below':'above';
+ p.style.left=(left+sx)+'px';p.style.top=(below?rl.bottom+sy+10:rf.top+sy-ph-10)+'px';
+ p.style.setProperty('--ax',Math.max(12,Math.min(pw-26,cx-left-7))+'px')}
+// ---------- helpers ----------
+const tog=(a,e)=>{const i=a.indexOf(e);i<0?a.push(e):a.splice(i,1)};
+const btn=(a,v,on,t)=>`<button class="${on?'on':''}" data-a="${a}" data-v="${v}">${t}</button>`;
+const T=(d,t)=>`<span class="term" data-d="${d}">${t}</span>`;
+function cmpSet(g,t){if(!g.length)return{ok:false,msg:'Pick at least one element first.'};const ok=g.filter(x=>t.includes(x)).length,ex=g.length-ok,mi=t.length-ok;
+ return{ok:!ex&&!mi,msg:!ex&&!mi?'✅ Yes! You found them all.':ex&&mi?'❌ Not yet. Something you picked is not there, and something is missing.':ex?'❌ Not yet. Something you picked is not there.':'❌ Not yet. You are missing at least one element.'}}
+const glow=L=>{const s=[0,0,0];L.forEach(([l,v])=>rgb(l).forEach((c,i)=>s[i]+=c*v));const m=Math.max(...s);return s.map(x=>Math.round(x/m*255))};
+const note=(k,ph,rows_=4)=>`<textarea rows="${rows_}" data-t="${k}" placeholder="${ph}">${esc(S.txt[k]||'')}</textarea>`;
+const OK=k=>!!S.ok[k];
+const coolLeft=key=>UNLOCK?0:Math.max(0,Math.ceil(((S.cool[key]||0)-Date.now())/1000));
+const chk=(a,v,key)=>{const l=coolLeft(key);return `<button class="${l>0?'lk':''}" data-a="${a}" data-v="${v}" data-cool="${key}" data-lbl="✔ Check answer">${l>0?'⏳ Wait '+l+'s':'✔ Check answer'}</button>`};
+const nearest=(L,w)=>{let b=-1,d=1e9;L.forEach((l,i)=>{const x=Math.abs(l-w);if(x<=3&&x<d){d=x;b=i}});return b};
+function evUI(key,sel,n,names){const ev=S.ev[key]||{};
+ if(!sel.length)return'<div class="ev">📍 <b>Evidence:</b> pick an element above, then show the wavelength(s) that match.</div>';
+ return `<div class="ev">📍 <b>Show your evidence.</b> Tap a line on the spectrum to read its wavelength, then type it.</div>`+sel.map(e=>{const a=ev[e]||[];
+  const inp=i=>`<input class="wl" type="number" inputmode="numeric" placeholder="nm" data-ev="${key}|${e}|${i}" value="${esc(a[i]===undefined?'':a[i])}">`;
+  return `<div class="evr">I picked <b>${names[e]}</b> because ${n==1?'a line at '+inp(0)+' nm matches.':'lines at '+inp(0)+' nm and '+inp(1)+' nm match.'}</div>`}).join('')}
+function runCheck(key,sel,truth,lines,n,tip){const ev=S.ev[key]||{};
+ if(!sel.length){S.fb[key]='Pick at least one element first.';return}
+ for(const e of sel){for(let i=0;i<n;i++){const x=(ev[e]||[])[i];
+  if(x===undefined||String(x).trim()===''||isNaN(+x)){S.fb[key]='✏️ Add your evidence first: type the wavelength(s) for each element you picked. Tap a line on the spectrum to read it.';return}
+  if(+x<400||+x>750){S.fb[key]='✏️ Wavelengths on this spectrum are between 400 and 750 nm.';return}}}
+ S.att[key]=(S.att[key]||0)+1;
+ let good=cmpSet(sel,truth).ok;
+ if(good)for(const e of sel){const idx=[...Array(n).keys()].map(i=>nearest(lines(e),+ev[e][i]));if(idx.some(i=>i<0)||new Set(idx).size<n)good=false}
+ if(good){S.ok[key]=1;S.fb[key]='✅ Correct! Your evidence matches.'}
+ else{delete S.ok[key];const t=S.tries[key]=(S.tries[key]||0)+1;S.cool[key]=Date.now()+Math.min(t,3)*20000;
+  S.fb[key]='❌ Not yet. Check your elements AND your wavelengths.'+(t>=3?' 💡 '+tip:'')+(t>=5?' Still stuck? Ask your teacher.':'')}}
+const qb=(id,key,title,body,opt)=>`<div class="qb ${OK(key)?'ok':''} ${opt?'opt':''}" id="${id}"><div class="qh"><span class="qn">${OK(key)?'✅':opt?'📝':'❓'}</span><span>${title}</span></div>${body}</div>`;
+const frBody=(q,ph,r)=>note(q,ph,r)+`<div class="chips">${btn('fr',q,0,'✔ Submit answer')}${btn('hint',q,0,'💡 Hint')}</div><div class="fb" id="fb-${q}">${S.fb[q]||''}</div><div class="sm" id="fb-${q}h">${S.fb[q+'h']||''}</div>`;
+// ---------- views ----------
+const LEARN=[
+['⚛️ Light from atoms',`Atoms have <b>energy levels</b>, like steps on a staircase. Electrons usually sit on the lowest steps. This is the ${T('The lowest energy an atom can have. Atoms are naturally in this state.','ground state')}. When an atom gets energy (heat, electricity, or light), an electron jumps up to a higher step. This is an ${T('An atom with an electron on a higher energy level than normal.','excited state')}. The electron soon falls back down and lets out the extra energy as <b>light</b>. Fireworks get their colors this way too!`],
+['🆔 Every element has a fingerprint',`Bigger jumps give different colors than smaller jumps. Each element has its own set of steps, so each element makes its own set of colors. This pattern of bright lines is its ${T('The bright colored lines an excited element gives off.','emission spectrum')}. <b>No two elements have the same one</b>, so we can use it to identify an element.`],
+['🌈 Colors and wavelength',`White light is all the colors mixed together. Each color has its own ${T('The length of one complete light wave. Measured here in nanometers (nm).','wavelength')}. Violet is short (about 400 nm). Red is long (about 700 nm). All colors travel at the same speed: 3.0 × 10⁸ meters per second.`],
+['🧪 Tubes and spectroscopes',`A <b>spectrum tube</b> is a glass tube filled with one gas. High voltage (1,000–2,000 volts, over 10 times a wall outlet!) excites the gas so it glows. Your eyes see all the colors blended together. A ${T('A tool that splits light into its separate colors.','spectroscope')} uses a ${T('A surface with tiny lines that spreads light out into its colors.','diffraction grating')} to split the glow into separate lines.`],
+['⭐ Fingerprinting the stars',`Now shine white light through a <b>cooler gas</b>. The atoms ${T('Take in light energy.','absorb')} only the colors they can use. Those colors go missing, leaving dark lines. This is an ${T('A rainbow with dark lines where a gas took out colors.','absorption spectrum')}. The dark lines are in the <b>same places</b> as the bright lines of that element's emission spectrum. Stars show absorption spectra, because their cooler atmosphere sits between the hot star and us. Dark lines tell astronomers which elements are in a star. <b>Thicker lines = more of that element.</b>`]];
+const learn=()=>`<div class="card"><h2>Read this first</h2><p class="sm">Tap a <span class="term" data-d="Definitions pop up right here, next to the word.">dotted word</span> to see its meaning. Tap 🔊 to hear a section.</p></div>`+
+LEARN.map((c,i)=>`<div class="card" id="c${i}"><h2>${c[0]}</h2><p>${c[1]}</p>${btn('say',i,0,'🔊 Read aloud')}</div>`).join('');
+function emis(){const t=S.tube,k=UNK[t]||t,L=EM[k].L,g=glow(L),lab=UNK[t]?'Unknown tube '+t[1]:EM[t].n;
+ rows=S.pwr?[{label:lab,L}].concat(S.cmp?[{label:EM[S.cmp].n+' (known)',L:EM[S.cmp].L}]:[]):[];
+ const ks=Object.keys(EM),NE=Object.fromEntries(ks.map(e=>[e,EM[e].n])),qa=(n,q)=>qb('q-'+q,q,`Question ${n}: Which element is in Unknown tube ${n}?`,`<div class="chips">${ks.map(e=>btn('u',q+'|'+e,S.u[q]==e,EM[e].n)).join('')}</div>${evUI(q,S.u[q]?[S.u[q]]:[],2,NE)}${chk('uchk',q,q)}<div class="fb" id="fb-${q}">${S.fb[q]||''}</div>`);
+ return `<div class="card"><h2>Part 1: Emission Spectra</h2><p><b>1.</b> Pick a tube. <b>2.</b> Turn on the power. <b>3.</b> Look at the spectrum. Tap it to read a wavelength. <b>4.</b> Compare unknown tubes with known ones.</p>
+ <h3>Known tubes</h3><div class="chips">${ks.map(e=>btn('tube',e,t==e,EM[e].n)).join('')}</div><h3>Unknown tubes</h3><div class="chips">${btn('tube','U1',t=='U1','Unknown 1')}${btn('tube','U2',t=='U2','Unknown 2')}</div>
+ <div class="tube ${S.pwr?'lit':''}" style="--g:${g}"></div>
+ <div class="chips" style="justify-content:center">${S.pwr?btn('pwr',1,0,'⏻ Power OFF'):'<button class="go" data-a="pwr">⚡ Turn ON high voltage</button>'}</div>
+ ${S.pwr?`<p class="sm">What your eyes see is the glowing tube. Below is what the spectroscope shows.</p><canvas id="cv"></canvas><h3>Compare with ONE known spectrum</h3><div class="chips">${btn('cmp','',!S.cmp,'None')}${ks.map(e=>btn('cmp',e,S.cmp==e,EM[e].n)).join('')}</div>`:''}</div>
+ <div class="card qcard"><h2>❓ Questions</h2><p>Use the lab above to find the answers. For each one, pick the element <b>and show your evidence</b> (wavelengths). You need all three to unlock the next page.</p>${qa(1,'q1')}${qa(2,'q2')}${qb('q-q3','q3','Question 3: Why does a sodium vapor street light look yellow instead of white?',frBody('q3','Use your evidence. Sodium’s lines are at ___ nm, which is the color ___. So the light looks yellow because…',4))}</div>`}
+function mvLab(k){const c=MV[k],m=S.m[k],id=m.sel,ids=Object.keys(c.refs);rows=[c.row(id)].concat(m.ov.map(c.rr));
+ return `<div class="card"><p>${c.h}</p><div class="chips">${c.items.map(([i,n])=>btn('msel',k+'|'+i,i==id,n)).join('')}</div><canvas id="cv"></canvas>
+ <h3>Compare with ONE reference spectrum</h3><div class="chips">${btn('mov',k+'|',!m.ov.length,'None')}${ids.map(e=>btn('mov',k+'|'+e,m.ov.includes(e),c.names[e])).join('')}</div></div>`}
+function mvQ(k){const c=MV[k],m=S.m[k],id=m.sel,key=k+id,ids=Object.keys(c.refs),opt=k=='star'&&id!='2';
+ const title=k=='star'?(opt?`Practice (not required): Which elements are in ${STAR[+id][0]}?`:'Questions 4–10: Which elements are in the Mystery Star?'):`Question 12: Which elements are in Spectra ${id}?`;
+ return qb('q-'+k,key,title,`<div class="chips">${ids.map(e=>btn('mans',k+'|'+e,m.ans[id].includes(e),c.names[e])).join('')}</div>${evUI(key,m.ans[id],1,c.names)}${chk('mchk',k,key)}<div class="fb" id="fb-${key}">${S.fb[key]||''}</div>`,opt)}
+const star=()=>mvLab('star')+`<div class="card qcard"><h2>❓ Questions</h2>${mvQ('star')}${qb('q-q11','q11','Question 11: In your own words, explain how astronomers use spectrographs to find out what a star is made of and how it moves.',frBody('q11','Astronomers can tell what a star is made of because… They can tell how it moves because…',5))}</div>`;
+const unk=()=>mvLab('q12')+`<div class="card qcard"><h2>❓ Question 12</h2><p>Do all three spectra (A, B and C). Switch between them with the buttons above the picture.</p>${mvQ('q12')}</div>`;
+// ---------- electron configurations ----------
+const EL=[['Na','Sodium',11,'[Ne]3s1',1],['Ne','Neon',10,'[He]2s2 2p6',8],['Hg','Mercury',80,'[Xe]4f14 5d10 6s2',2],['He','Helium',2,'1s2',2],['Ca','Calcium',20,'[Ar]4s2',2],['H','Hydrogen',1,'1s1',1],['Fe','Iron',26,'[Ar]4s2 3d6',2],['Mg','Magnesium',12,'[Ne]3s2',2],['Li','Lithium',3,'[He]2s1',1],['Kr','Krypton',36,'[Ar]3d10 4s2 4p6',8]];
+const VA={Fe:[2,8],Hg:[2,12]};
+const He_={'1s':2},Ne_={...He_,'2s':2,'2p':6},Ar_={...Ne_,'3s':2,'3p':6},Kr_={...Ar_,'3d':10,'4s':2,'4p':6},Xe_={...Kr_,'4d':10,'5s':2,'5p':6},CORE={he:He_,ne:Ne_,ar:Ar_,kr:Kr_,xe:Xe_};
+function pc(s){s=String(s).replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g,c=>'⁰¹²³⁴⁵⁶⁷⁸⁹'.indexOf(c)).replace(/[\^\s]/g,'').toLowerCase();const m=s.match(/\[(he|ne|ar|kr|xe)\]/),d=m?{...CORE[m[1]]}:{};
+ s.replace(/\[.*?\]/,'').split(/(?=\d[spdf])/).forEach(p=>{if(!p)return;const t=p.match(/^(\d)([spdf])(\d+)$/);if(t)d[t[1]+t[2]]=(d[t[1]+t[2]]||0)+ +t[3];else d._bad=1});return{d,core:!!m}}
+const sig=d=>Object.keys(d).sort().map(k=>k+d[k]).join();
+const fmt=s=>s.replace(/([spdf])(\d+)/g,'$1<sup>$2</sup>');
+function echk(sym){const r=EL.find(x=>x[0]==sym),e=S.e[sym]||{};if(!String(e.c||'').trim())return{ok:false,msg:'Type a configuration first.'};
+ const p=pc(e.c),k=pc(r[3]),cok=sig(p.d)==sig(k.d),v=String(e.v===undefined?'':e.v).trim(),vok=v!==''&&(VA[sym]||[r[4]]).includes(+v);
+ const c=cok?'✅ Configuration'+(k.core&&!p.core?' (tip: use the [noble gas] shortcut)':''):`❌ Configuration: it should have ${r[2]} electrons in total. Check each sublevel.`;
+ const w=v===''?'❌ Enter the valence electrons':vok?'✅ Valence':'❌ Valence: count the electrons in the outer shell';
+ return{ok:cok&&vok,msg:c+' · '+w}}
+const elec=()=>`<div class="card"><h2>Part 3: Electron Configurations</h2><p>Write the <b>noble gas</b> electron configuration and the number of <b>valence electrons</b> for each element. Type numbers after letters. Example for boron: <b>[He] 2s2 2p1</b>. Use the periodic table to help you.</p></div>
+<div class="card qcard"><h2>❓ Questions: all 10 elements</h2><p>Press <b>Check</b> on each one. You need all 10 correct to unlock My Answers.</p>${EL.map(r=>{const e=S.e[r[0]]||{};return qb('q-e'+r[0],'e'+r[0],`${r[1]} (${r[0]}) · ${r[2]} electrons`,`<input data-e="${r[0]}" data-f="c" value="${esc(e.c||'')}" placeholder="Noble gas configuration" autocapitalize="off" autocorrect="off" spellcheck="false"><div class="pv">${fmt(esc(e.c||''))}</div><input data-e="${r[0]}" data-f="v" type="number" inputmode="numeric" value="${esc(e.v||'')}" placeholder="Valence electrons"><div class="chips">${btn('echk',r[0],0,'✔ Check')}</div><div class="fb" id="fb-e${r[0]}">${S.ef[r[0]]||''}</div>`)}).join('')}</div>`;
+// ---------- summary ----------
+function sum(){const m=S.m,NEn=Object.fromEntries(Object.keys(EM).map(k=>[k,EM[k].n])),
+ tr=k=>S.ok[k]?(S.att[k]?` — ${S.att[k]} ${S.att[k]==1?'try':'tries'}`:''):' — NOT VERIFIED',
+ evs=(k,sel,nm)=>sel.length?sel.map(e=>nm[e]+((S.ev[k]&&S.ev[k][e])?' ('+S.ev[k][e].filter(x=>x!==''&&x!==undefined).join(' & ')+' nm)':'')).join(', ')+tr(k):'(blank)',
+ u=q=>evs(q,S.u[q]?[S.u[q]]:[],NEn);
+ return `SPECTROSCOPY VIRTUAL LAB\nName: ${S.name||'(no name)'}\n\nPART 1\n1) Unknown tube 1: ${u('q1')}\n2) Unknown tube 2: ${u('q2')}\n3) ${S.txt.q3||'(blank)'}\n\nPART 2\nMystery Star (4-10): ${evs('star2',m.star.ans[2],SN)}\n11) ${S.txt.q11||'(blank)'}\n12) Spectra A: ${evs('q12A',m.q12.ans.A,QN)}\n    Spectra B: ${evs('q12B',m.q12.ans.B,QN)}\n    Spectra C: ${evs('q12C',m.q12.ans.C,QN)}\n\nPART 3\n`+EL.map(r=>{const e=S.e[r[0]]||{};return `${r[1]}: ${e.c||'(blank)'}; valence electrons: ${e.v||'(blank)'}`}).join('\n')}
+const ans=()=>`<div class="card"><h2>My Answers</h2><p>Type your name, then copy your answers and paste them where your teacher tells you (Google Classroom, a Doc, or a Form).</p><input data-t="name" placeholder="Your name" value="${esc(S.name||'')}" autocapitalize="words">
+<div class="chips" style="margin-top:10px"><button class="go" data-a="copy">📋 Copy my answers</button>${btn('reset',1,0,S._r?'Tap again to erase everything':'🗑 Start over')}</div><textarea id="sum" rows="18" readonly style="font-size:15px">${esc(sum())}</textarea></div>`;
+// ---------- gating: tasks, locks, banner, next button ----------
+const TN=['Learn','Emission Lab','Star Lab','Unknowns','Electrons','My Answers'],TI=['📖','⚡','⭐','❓','⚛️','📋'],V=[learn,emis,star,unk,elec,ans];
+const TASKS=[()=>[],
+ ()=>[{k:'q1',l:'Question 1',go:'q-q1'},{k:'q2',l:'Question 2',go:'q-q2'},{k:'q3',l:'Question 3',go:'q-q3'}],
+ ()=>[{k:'star2',l:'Mystery Star (Q4–10)',go:'q-star',sel:['star','2']},{k:'q11',l:'Question 11',go:'q-q11'}],
+ ()=>['A','B','C'].map(x=>({k:'q12'+x,l:'Spectra '+x,go:'q-q12',sel:['q12',x]})),
+ ()=>EL.map(r=>({k:'e'+r[0],l:r[1],go:'q-e'+r[0]})),
+ ()=>[]];
+const left=i=>TASKS[i]().filter(t=>!OK(t.k)),done=i=>!left(i).length;
+const open=i=>{if(UNLOCK)return true;for(let j=0;j<i;j++)if(!done(j))return false;return true};
+const firstLeft=i=>{for(let j=0;j<i;j++)if(!done(j))return j};
+function banner(){const T_=TASKS[S.tab]();if(!T_.length)return'';const n=T_.filter(t=>OK(t.k)).length;
+ return `<div class="card task"><h2>✏️ Your tasks on this page: ${n} of ${T_.length} done</h2><div class="bar"><i style="width:${100*n/T_.length}%"></i></div><p>${n==T_.length?'🎉 All done! Tap <b>Next</b> at the bottom.':'Answer every question correctly to unlock the next page. Tap a task to jump to it.'}</p><div class="chips">${T_.map(t=>btn('go',t.go+(t.sel?'|'+t.sel.join('|'):''),0,(OK(t.k)?'✅ ':'⬜ ')+t.l)).join('')}</div></div>`}
+function nextBar(){const i=S.tab;if(i>=5)return'';const can=open(i+1);
+ return `<div class="card nx"><button class="${can?'go':'lk'}" data-a="next">${can?'':'🔒 '}Next: ${TN[i+1]} ▶</button>${can?'':`<div class="sm" style="margin-top:6px">Still to do: ${left(i).map(t=>t.l).join(', ')}</div>`}</div>`}
+function gate(){$('#nav').innerHTML=TN.map((n,i)=>`<button class="${i==S.tab?'on':''} ${open(i)?'':'lk'}" data-a="tab" data-v="${i}">${open(i)?(i>=1&&i<=4&&done(i)?'✅':TI[i]):'🔒'} ${n}</button>`).join('');
+ const nv=$('#nav'),on=nv.querySelector('.on');if(on)nv.scrollLeft=on.offsetLeft-(nv.clientWidth-on.offsetWidth)/2;
+ $('#bn').innerHTML=banner();$('#nx').innerHTML=nextBar()}
+// ---------- actions ----------
+const A={
+ tab:(v,b)=>{v=+v;if(!open(v)){pop(b,'<b>🔒 Locked</b>First finish the questions on the <b>'+TN[firstLeft(v)]+'</b> page.');return false}S.tab=v;TOP=true},
+ next:(v,b)=>{if(!open(S.tab+1)){pop(b,'<b>🔒 Not yet!</b>Still to do: '+left(S.tab).map(t=>t.l).join(', '));return false}S.tab++;TOP=true},
+ go:v=>{const p=v.split('|');if(p[1]){S.m[p[1]].sel=p[2];render()}const el=document.getElementById(p[0]);if(el){el.scrollIntoView({behavior:'smooth',block:'start'});el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash')}return false},
+ tube:v=>{S.tube=v},pwr:()=>{S.pwr=!S.pwr},cmp:v=>{S.cmp=v},
+ u:v=>{const[q,e]=v.split('|');S.u[q]=e;delete S.ok[q];delete S.fb[q]},
+ uchk:(q,b)=>{const l=coolLeft(q);if(l>0){pop(b,'<b>⏳ Take another look</b>Compare the spectra again before you check. Try again in '+l+' seconds.');return false}
+  const e=S.u[q];runCheck(q,e?[e]:[],[q=='q1'?UNK.U1:UNK.U2],x=>EM[x].L.map(y=>y[0]),2,'Turn on the unknown tube, then compare it with ONE known tube at a time. Do ALL the lines match? Tap a line to read its wavelength.')},
+ fr:q=>{const w=(S.txt[q]||'').trim().split(/\s+/).filter(Boolean),min={q3:8,q11:15}[q],d=new Set(w.map(x=>x.toLowerCase())).size;
+  if(w.length<min||d<Math.ceil(min/2)){delete S.ok[q];S.fb[q]=`❌ Write a full answer in your own words (at least ${min} words). You have ${w.length}.`}else{S.ok[q]=1;S.fb[q]='✅ Answer saved.'}},
+ hint:q=>{S.fb[q+'h']=q=='q3'?'💡 Look at sodium’s spectrum. Which colors are there? What happens to all the other colors?':'💡 Think about matching dark lines to known elements. Also: if a star moves toward us, its lines shift toward blue; if it moves away, they shift toward red.'},
+ msel:v=>{const[k,i]=v.split('|');S.m[k].sel=i},
+ mov:v=>{const[k,e]=v.split('|'),m=S.m[k];m.ov=(e===''||m.ov.includes(e))?[]:[e]},
+ mans:v=>{const[k,e]=v.split('|'),m=S.m[k];tog(m.ans[m.sel],e);delete S.ok[k+m.sel];delete S.fb[k+m.sel]},
+ mchk:(k,b)=>{const m=S.m[k],key=k+m.sel,l=coolLeft(key);if(l>0){pop(b,'<b>⏳ Take another look</b>Compare the spectra again before you check. Try again in '+l+' seconds.');return false}
+  runCheck(key,m.ans[m.sel],MV[k].truth(m.sel),MV[k].lines,1,MV[k].tip)},
+ echk:s=>{const r=echk(s),key='e'+s;S.ef[s]=r.msg;
+  if(r.ok)S.ok[key]=1;else{delete S.ok[key];S.tries[key]=(S.tries[key]||0)+1;if(S.tries[key]>=3)S.ef[s]+=' 💡 Hint: the electrons in the [noble gas] plus the small numbers you typed must add up to the total.'}},
+ say:(i,b)=>{if(!window.speechSynthesis){pop(b,'<b>Not available</b>Read aloud does not work on this device.');return false}speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance($('#c'+i).innerText));return false},
+ copy:(v,b)=>{const ta=$('#sum');ta.removeAttribute('readonly');ta.select();ta.setSelectionRange(0,99999);let ok=false;try{ok=document.execCommand('copy')}catch(e){}ta.setAttribute('readonly','');
+  const yes=()=>pop(b,'<b>Copied!</b>Now paste it where your teacher told you.'),no=()=>pop(b,'<b>Almost</b>Press and hold the text, then tap Copy.');
+  if(ok)yes();else if(navigator.clipboard)navigator.clipboard.writeText(sum()).then(yes,no);else no();return false},
+ reset:()=>{if(!S._r){S._r=1;return}try{localStorage.removeItem('speclab2')}catch(e){}location.reload();return false},
+ tcgo:()=>{const i=$('#tcode');if(i.value===TEACHER_CODE){UNLOCK=true;hide();return}i.value='';i.placeholder='Wrong code';return false}};
+let tc=0,tt;
+document.addEventListener('click',e=>{const t=e.target;if(!t.closest('#pop'))hide();
+ if(t.closest('header')){tc++;clearTimeout(tt);tt=setTimeout(()=>tc=0,2500);if(tc>=5){tc=0;pop($('header h1'),'<b>Teacher unlock</b><input id="tcode" type="password" placeholder="Code" style="color:#000;margin:6px 0"><button class="go" data-a="tcgo">Unlock</button>')}return}
+ const tm=t.closest('.term');if(tm){tm.classList.add('open');pop(tm,'<b>'+tm.textContent+'</b>'+tm.dataset.d);return}
+ const b=t.closest('[data-a]');if(!b)return;if(b.dataset.a!='reset')S._r=0;if(A[b.dataset.a](b.dataset.v,b)!==false)render()});
+function unok(t){const q=t.closest('.qb');if(q&&q.classList.contains('ok')){q.classList.remove('ok');q.querySelector('.qn').textContent='❓'}}
+document.addEventListener('input',e=>{const t=e.target,d=t.dataset;
+ if(d.t){if(d.t=='name')S.name=t.value;else{S.txt[d.t]=t.value;delete S.ok[d.t];delete S.fb[d.t];const f=$('#fb-'+d.t);if(f)f.textContent='';unok(t);gate()}}
+ else if(d.ev){const[key,el,i]=d.ev.split('|');S.ev[key]=S.ev[key]||{};(S.ev[key][el]=S.ev[key][el]||[])[+i]=t.value;delete S.ok[key];delete S.fb[key];const f=$('#fb-'+key);if(f)f.textContent='';unok(t);gate()}
+ else if(d.e){const o=S.e[d.e]=S.e[d.e]||{};o[d.f]=t.value;delete S.ok['e'+d.e];delete S.ef[d.e];const f=$('#fb-e'+d.e);if(f)f.textContent='';unok(t);gate();if(d.f=='c')t.nextElementSibling.innerHTML=fmt(esc(t.value))}
+ save()});
+setInterval(()=>{document.querySelectorAll('[data-cool]').forEach(b=>{const l=coolLeft(b.dataset.cool);if(l>0){b.textContent='⏳ Wait '+l+'s';b.classList.add('lk')}else{b.textContent=b.dataset.lbl;b.classList.remove('lk')}})},500);
+function render(){hide();const y=scrollY;$('#sub').textContent='Element Identification and Emission Spectra'+(UNLOCK?' · 🔓 Teacher mode':'');
+ cur=null;$('#bd').innerHTML=V[S.tab]();gate();redraw();save();scrollTo(0,TOP?0:y);TOP=false}
+while(S.tab>0&&!open(S.tab))S.tab--;
+render();
+</script></body></html>
